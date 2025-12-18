@@ -75,10 +75,10 @@ if __name__ == "__main__":
             print(f'rot_str: <{rot_str}>')
         if len(rot_str.strip()) > 0:
             matrix_rot_row.append(int(rot_str.strip()))
-            if (row_count % len(matrix)) == 0:
-                matrix_rot_list.append(matrix_rot_row)
-                matrix_rot_row = []
-            row_count += 1
+        else:
+            matrix_rot_list.append(matrix_rot_row)
+            matrix_rot_row = []
+    matrix_rot_list.append(matrix_rot_row)
     print(f'matrix rot list: {matrix_rot_list}')
 
     tot_list = []
