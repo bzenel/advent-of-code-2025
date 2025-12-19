@@ -1,0 +1,133 @@
+import sys
+import re
+import math
+from functools import cmp_to_key
+from collections import deque
+
+def dump_matrix(matrix):
+    for row in matrix:
+        print(row)
+
+def read_lines(file_path):
+    """Generator to read lines from file one at a time."""
+    with open(file_path) as file_handle:
+        for line in file_handle:
+            yield line.strip()
+
+def matrix_positions(max_row, max_col, start_row=0, start_col=0):
+    """Generator for matrix positions (row, col)."""
+    for row_ind in range(start_row, max_row):
+        for col_ind in range(start_col, max_col):
+            yield row_ind, col_ind
+
+def process_matrix_part1(matrix):
+    """Generator that yields (row, col, num_splits) as it processes the matrix."""
+    num_splits = 0
+    max_row = len(matrix)
+    max_col = len(matrix[0])
+    
+    for row_ind, col_ind in matrix_positions(max_row, max_col, start_row=1):
+        curr_char = matrix[row_ind][col_ind]
+        above_char = matrix[row_ind-1][col_ind]
+        
+        if curr_char == '|':
+            continue
+        if curr_char == '^':
+            if above_char == '|':
+                if matrix[row_ind][col_ind-1] != '|':
+                    matrix[row_ind] = matrix[row_ind][0:col_ind-1] + '|' + matrix[row_ind][col_ind:]
+                matrix[row_ind] = matrix[row_ind][0:col_ind+1] + '|' + matrix[row_ind][col_ind+2:]
+                num_splits += 1
+                yield row_ind, col_ind, num_splits
+                continue
+        if above_char == '|':
+            matrix[row_ind] = matrix[row_ind][0:col_ind] + '|' + matrix[row_ind][col_ind+1:]
+    
+    yield None, None, num_splits
+
+def process_matrix_part2(matrix, start_row, start_col):
+    """Generator that processes matrix and yields new matrix states."""
+    max_row = len(matrix)
+    max_col = len(matrix[0])
+    
+    found_split = False
+    for row_ind, col_ind in matrix_positions(max_row, max_col, start_row, start_col):
+        curr_char = matrix[row_ind][col_ind]
+        above_char = matrix[row_ind-1][col_ind]
+        
+        if curr_char == '|':
+            pass
+        elif curr_char == '^':
+            if above_char == '|':
+                left_char = matrix[row_ind][col_ind-1]
+                # First branch: replace left with |
+                matrix[row_ind] = matrix[row_ind][0:col_ind-1] + '|' + matrix[row_ind][col_ind:]
+                yield matrix.copy(), row_ind + 1, 0, True
+                # Restore and create second branch
+                matrix[row_ind] = matrix[row_ind][0:col_ind-1] + left_char + matrix[row_ind][col_ind:]
+                matrix[row_ind] = matrix[row_ind][0:col_ind+1] + '|' + matrix[row_ind][col_ind+2:]
+                yield matrix.copy(), row_ind + 1, 0, True
+                found_split = True
+                break
+        elif above_char == '|':
+            matrix[row_ind] = matrix[row_ind][0:col_ind] + '|' + matrix[row_ind][col_ind+1:]
+    
+    if not found_split:
+        yield None, None, None, False
+
+if __name__ == "__main__":
+    print(f'starting...')
+
+    # Read lines using generator
+    lines = list(read_lines(sys.argv[1]))
+    print(f'read {len(lines)} lines')
+
+    matrix = lines.copy()
+
+    start_col = matrix[0].index('S')
+    print(f'Start is at loc {start_col}')
+    matrix[0] = matrix[0][0:start_col] + '|' + matrix[0][start_col+1:]
+
+    print('Matrix:')
+    dump_matrix(matrix)
+
+    # Process using generator
+    num_splits = 0
+    for row_ind, col_ind, splits in process_matrix_part1(matrix):
+        if row_ind is None:
+            num_splits = splits
+            break
+
+    print('Final matrix:')
+    dump_matrix(matrix)
+    print(f'Num splits: {num_splits}')
+
+    print('Part 2!')
+
+    matrix = lines.copy()
+    matrix[0] = matrix[0][0:start_col] + '|' + matrix[0][start_col+1:]
+
+    print('Matrix:')
+    dump_matrix(matrix)
+
+    matrix_stack = deque([])
+    matrix_stack.appendleft([matrix, 1, 0])
+    num_worlds = 0
+    
+    while len(matrix_stack) > 0:
+        if (len(matrix_stack) % 10000 == 0) or (len(matrix_stack) < 1000):
+            print(f'num stacks: {len(matrix_stack)}')
+        matrix, row_ind, col_ind = matrix_stack.popleft()
+        
+        # Use generator to process matrix
+        found_split = False
+        for new_matrix, new_row, new_col, is_split in process_matrix_part2(matrix, row_ind, col_ind):
+            if new_matrix is None:
+                # No split found - this path completed, count as a world
+                num_worlds += 1
+                break
+            if is_split:
+                matrix_stack.append([new_matrix, new_row, new_col])
+                found_split = True
+    
+    print(f'Num worlds: {num_worlds}')
